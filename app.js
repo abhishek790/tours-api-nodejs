@@ -22,12 +22,26 @@ app.get('/api/v1/tours', (req, res) => {
   });
 });
 
-// request object is what holds all the data ,the information about the request that was done by the client
-// express does not put that body data on the request, so inorder to have that data available we have to use something called middleware
 app.post('/api/v1/tours', (req, res) => {
-  // body is the property that is gonna be available on the request because we used that middleware
   console.log(req.body);
-  res.send('Done');
+
+  const newId = tours[tours.length - 1].id + 1;
+
+  // allows us to create a new object by merging two existing objects
+  const newTour = Object.assign({ id: newId }, req.body);
+  tours.push(newTour);
+  fs.writeFile(
+    `${__dirname}/dev-data/data/tours-simple.json`,
+    JSON.stringify(tours),
+    (err) => {
+      res.status(201).json({
+        status: 'success',
+        data: {
+          tour: newTour,
+        },
+      });
+    }
+  );
 });
 
 const port = 3000;
