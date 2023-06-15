@@ -60,18 +60,31 @@ const createTours = (req, res) => {
 };
 
 const updateTours = (req, res) => {
-  if (Number(req.params.id) > tours.length) {
-    return res.status(404).json({
-      status: 'Fail',
-      message: 'Invalid Id',
-    });
+  const id = Number(req.params.id);
+
+  if (id > tours.length) {
+    return res.status(401).json({ status: 'fail', message: 'Invalid ID' });
   }
-  res.status(200).json({
-    status: 'success',
-    data: {
-      message: '<updated tour here>',
-    },
-  });
+
+  const updateTour = tours[id];
+
+  const userData = req.body;
+
+  const updatedData = { ...updateTour, ...userData };
+  tours[id] = updatedData;
+
+  fs.writeFile(
+    `${__dirname}/dev-data/data/tours-simple.json`,
+    JSON.stringify(tours),
+    () => {
+      res.status(200).json({
+        status: 'success',
+        data: {
+          Updatedtour: updatedData,
+        },
+      });
+    }
+  );
 };
 
 const deleteTours = (req, res) => {
@@ -81,10 +94,11 @@ const deleteTours = (req, res) => {
       message: 'invalid id',
     });
   }
-
+  const id = req.params.id;
+  tours[id] = null;
   res.status(204).json({
     status: 'success',
-    data: null,
+    data: tours[id],
   });
 };
 
