@@ -1,38 +1,51 @@
 const fs = require('fs');
 const express = require('express');
+const morgan = require('morgan');
 
 const app = express();
+
+//1) MIDDLEWARE
+
+app.use(morgan('dev'));
+app.use(express.json());
+
+//custom middleware
+app.use((req, res, next) => {
+  console.log('hello from the middleware');
+
+  next();
+});
+//custom middleware
+app.use((req, res, next) => {
+  req.requestTime = new Date().toISOString();
+  next();
+});
 
 const tours = JSON.parse(
   fs.readFileSync(`${__dirname}/dev-data/data/tours-simple.json`, 'utf-8')
 );
 
-app.get('/api/v1/tours', (req, res) => {
+// 2)ROUTE HANDLER
+
+//------------tour resources----------
+const getAllTours = (req, res) => {
+  console.log(req.requestTime);
   res.status(200).json({
     status: 'success',
+    requestedAt: req.requestTime,
     results: tours.length,
     data: {
       tours: tours,
     },
   });
-});
+};
 
-// what we want to implement in this lecture is a way of getting only one tour
-// define a route that can accept a variable
-// :id => we created variable id
-// we can also define multiple variable
-//:y?=> this makes that parameter optional (meaning if we didnot specify in the 3rd parameter, it will still work)
-app.get('/api/v1/tours/:id', (req, res) => {
-  // these variable in the url are called parameters
-  // param is where the all the parameters,all the variables that we define in the url are stored
-  console.log(req.params);
+const getTours = (req, res) => {
   const id = Number(req.params.id);
-  // what find will do is , it will only create an array where below comparison is true
+
   const tour = tours.find((el) => el.id === id);
 
-  // if (id > tours.length)
   if (!tour) {
-    // return exit the function immediately
     return res.status(404).json({
       status: 'fail',
       message: 'Invalid ID',
@@ -45,10 +58,9 @@ app.get('/api/v1/tours/:id', (req, res) => {
       tour: tour,
     },
   });
-});
+};
 
-app.post('/api/v1/tours', (req, res) => {
-  console.log(req.body);
+const createTours = (req, res) => {
   const newId = tours[tours.length - 1].id + 1;
   const newTour = Object.assign({ id: newId }, req.body);
   tours.push(newTour);
@@ -64,13 +76,91 @@ app.post('/api/v1/tours', (req, res) => {
       });
     }
   );
-});
+};
 
+const updateTours = (req, res) => {
+  if (Number(req.params.id) > tours.length) {
+    return res.status(404).json({
+      status: 'Fail',
+      message: 'Invalid Id',
+    });
+  }
+  res.status(200).json({
+    status: 'success',
+    data: {
+      message: '<updated tour here>',
+    },
+  });
+};
+
+const deleteTours = (req, res) => {
+  if (Number(req.params.id) > tours.length) {
+    return res.status(404).json({
+      status: 'fail',
+      message: 'invalid id',
+    });
+  }
+
+  res.status(204).json({
+    status: 'success',
+    data: null,
+  });
+};
+
+// ----------users resources------------
+
+const getAllUsers = (req, res) => {
+  res.status(500).json({
+    status: 'error',
+    message: 'This route is not yet defined ',
+  });
+};
+
+const getUser = (req, res) => {
+  res.status(500).json({
+    status: 'error',
+    message: 'This route is not yet defined ',
+  });
+};
+
+const createUser = (req, res) => {
+  res.status(500).json({
+    status: 'error',
+    message: 'This route is not yet defined ',
+  });
+};
+
+const updateUser = (req, res) => {
+  res.status(500).json({
+    status: 'error',
+    message: 'This route is not yet defined ',
+  });
+};
+
+const deleteUser = (req, res) => {
+  res.status(500).json({
+    status: 'error',
+    message: 'This route is not yet defined ',
+  });
+};
+
+//3) ROUTES
+//created a new routes
+const tourRouter = express.Router();
+const userRouter = express.Router();
+
+tourRouter.route('/').get(getAllTours).post(createTours);
+tourRouter.route('/:id').get(getTours).patch(updateTours).delete(deleteTours);
+
+userRouter.route('/').get(getAllUsers).post(createUser);
+
+userRouter.route('/:id').get(getUser).patch(updateUser).delete(deleteUser);
+
+app.use('/api/v1/tours', tourRouter);
+app.use('/api/v1/users', userRouter);
+
+// 4) START THE SERVER
 const port = 3000;
 app.listen(port, () => {
   console.log(`App running on port ${port}... `);
 });
-
-// easy way to define parameters and right in the url and then how to read these parameters and how to respond to that
-
-// what we want to implement in this lecture is a way of getting only one tour
