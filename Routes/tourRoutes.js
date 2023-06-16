@@ -1,108 +1,26 @@
 const express = require('express');
-
-const fs = require('fs');
-
-const tours = JSON.parse(
-  fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`, 'utf-8')
-);
-
 const router = express.Router();
 
-//------------tour resources----------
-const getAllTours = (req, res) => {
-  console.log(req.requestTime);
-  res.status(200).json({
-    status: 'success',
-    requestedAt: req.requestTime,
-    results: tours.length,
-    data: {
-      tours: tours,
-    },
-  });
-};
+const tourController = require('./../controllers/tourController');
+/*
+// param middleware is a middleware that only runs for certain parameters so in our case the /:id ,we can write middleware that only runs when :id is present in the url
 
-const getTours = (req, res) => {
-  const id = Number(req.params.id);
-
-  const tour = tours.find((el) => el.id === id);
-
-  if (!tour) {
-    return res.status(404).json({
-      status: 'fail',
-      message: 'Invalid ID',
-    });
-  }
-
-  res.status(200).json({
-    status: 'success',
-    data: {
-      tour: tour,
-    },
-  });
-};
-
-const createTours = (req, res) => {
-  const newId = tours[tours.length - 1].id + 1;
-  const newTour = Object.assign({ id: newId }, req.body);
-  tours.push(newTour);
-  fs.writeFile(
-    `${__dirname}/dev-data/data/tours-simple.json`,
-    JSON.stringify(tours),
-    (err) => {
-      res.status(201).json({
-        status: 'success',
-        data: {
-          tour: newTour,
-        },
-      });
-    }
-  );
-};
-
-const updateTours = (req, res) => {
-  const id = Number(req.params.id);
-
-  if (id > tours.length) {
-    return res.status(401).json({ status: 'fail', message: 'Invalid ID' });
-  }
-
-  const updateTour = tours[id];
-
-  const userData = req.body;
-
-  const updatedData = { ...updateTour, ...userData };
-  tours[id] = updatedData;
-
-  fs.writeFile(
-    `${__dirname}/dev-data/data/tours-simple.json`,
-    JSON.stringify(tours),
-    () => {
-      res.status(200).json({
-        status: 'success',
-        data: {
-          Updatedtour: updatedData,
-        },
-      });
-    }
-  );
-};
-
-const deleteTours = (req, res) => {
-  if (Number(req.params.id) > tours.length) {
-    return res.status(404).json({
-      status: 'fail',
-      message: 'invalid id',
-    });
-  }
-  const id = req.params.id;
-  tours[id] = null;
-  res.status(204).json({
-    status: 'success',
-    data: tours[id],
-  });
-};
-
-router.route('/').get(getAllTours).post(createTours);
-router.route('/:id').get(getTours).patch(updateTours).delete(deleteTours);
+// here inside param we actually specify the parameter that we actually want to search for,so paramter for which this middleware is gonna run
+// in param middleware function we actually get access to 4th argument i.e value of the parameter in question
+router.param('id', (req, res, next, val) => {
+  console.log(`Tour id is:${val}`);
+  next();
+});
+*/
+router.param('id', tourController.checkID);
+router
+  .route('/')
+  .get(tourController.getAllTours)
+  .post(tourController.createTours);
+router
+  .route('/:id')
+  .get(tourController.getTours)
+  .patch(tourController.updateTours)
+  .delete(tourController.deleteTours);
 
 module.exports = router;
