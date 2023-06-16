@@ -8,7 +8,6 @@ const tours = JSON.parse(
 exports.checkID = (req, res, next, val) => {
   console.log(`Tour id is:${val}`);
   if (Number(req.params.id) > tours.length) {
-    // we need to have return because after sending the reponse it will hit the next() and move on to next middleware
     return res.status(404).json({
       status: 'fail',
       message: 'invalid id',
@@ -26,6 +25,15 @@ exports.getAllTours = (req, res) => {
       tours: tours,
     },
   });
+};
+
+// middleware
+exports.checkBody = (req, res, next) => {
+  console.log(req.body.price);
+  if (!req.body.name || !req.body.price) {
+    return res.status(400).json({ status: 'fail', message: 'invalid body' });
+  }
+  next();
 };
 
 exports.getTours = (req, res) => {
