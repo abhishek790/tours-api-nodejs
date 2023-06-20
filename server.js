@@ -1,12 +1,24 @@
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+
+dotenv.config({ path: './config.env' });
+
 const app = require('./app');
 
-// Environment variable=> node JS or Express apps can run in different environments And the most important ones are the development environment and the production environment.That's because depending on the environment,we might use different databases or   all kinds of different settings that might change depending on the development that we're in.
+const DB = process.env.DATABASE.replace(
+  '<PASSWORD>',
+  process.env.DATABASE_PASSWORD
+);
 
-// by default, Express sets the environment to development
-console.log(app.get('env'));
+mongoose
+  .connect(DB, {
+    useNewUrlParser: true,
+    useCreateIndex: true,
+    useFindAndModify: false,
+  })
+  .then(() => console.log('DB connection successful!'));
 
-const port = 3000;
-
+const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`App running on port ${port}... `);
 });
