@@ -6,29 +6,36 @@ exports.getAllTours = async (req, res) => {
     // BUILD QUERY
     //1A) Filtering
     const queryObj = { ...req.query };
-    const excludeFields = ['page', 'sort', 'limit', 'field'];
+    const excludeFields = ['page', 'sort', 'limit', 'fields'];
     excludeFields.forEach((el) => delete queryObj[el]);
 
     //2B) Advanced filtering
-    // making query into json so that we can use replace method
-    let queryStr = JSON.stringify(queryObj);
 
+    let queryStr = JSON.stringify(queryObj);
     queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
     console.log(JSON.parse(queryStr));
     let query = Tour.find(JSON.parse(queryStr));
 
     //2) Sorting
     if (req.query.sort) {
-      //const query = query.sort(req.query.sort)// sorts in ascending order
-      //localhost:3000/api/v1/tours?sort=-price =>sorts in descending order
-
       const sortBy = req.query.sort.split(',').join(' ');
-      console.log(sortBy);
-      //Sort using multiple options=>sort(price ratingsAverage)
       query = query.sort(sortBy);
     } else {
       query = query.sort('-createdAt');
     }
+
+    //3) Field Limiting
+    if (req.query.fields) {
+      const fields = req.query.fields.split(',').join(' ');
+      query = query.select(fields); // it is same as projection in mongodb
+    } else {
+      query = query.select('-__v'); // - prefix means not including, it will not send __v to client
+    }
+
+    //4) Pagination
+
+    // page=2&limit=10 page1= 1-10, page2= 11-20, page3= 21-30
+    query = query.skip(2).limit(10); // limit=> amount of result we want in the query, and skip=> amount of result that should be skipped before querying data
 
     //Execute query
     const tours = await query;
