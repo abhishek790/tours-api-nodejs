@@ -4,26 +4,33 @@ exports.getAllTours = async (req, res) => {
   try {
     console.log(req.query);
     // BUILD QUERY
-    //1) Filtering
+    //1A) Filtering
     const queryObj = { ...req.query };
     const excludeFields = ['page', 'sort', 'limit', 'field'];
     excludeFields.forEach((el) => delete queryObj[el]);
-    console.log(req.query);
 
-    //2) Advanced filtering
+    //2B) Advanced filtering
     // making query into json so that we can use replace method
-    const queryStr = JSON.stringify(queryObj);
+    let queryStr = JSON.stringify(queryObj);
 
-    // | means or , g means it will make change every where, \b\b means it will only target these words not those words that contains these letters
-    queryStr.replace(/\b(gte|gt|lte|lt)\b/g);
+    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+    console.log(JSON.parse(queryStr));
+    let query = Tour.find(JSON.parse(queryStr));
 
-    //localhost:3000/api/v1/tours?difficulty=easy&duration[gte]=5 we use square brackets inorder specify operator
-    //{ difficulty: 'easy', duration: { $gte: '5' } }
-    //{ difficulty: 'easy', duration: { gte: '5' } }
+    //2) Sorting
+    if (req.query.sort) {
+      //const query = query.sort(req.query.sort)// sorts in ascending order
+      //localhost:3000/api/v1/tours?sort=-price =>sorts in descending order
 
-    const query = Tour.find(queryObj);
+      const sortBy = req.query.sort.split(',').join(' ');
+      console.log(sortBy);
+      //Sort using multiple options=>sort(price ratingsAverage)
+      query = query.sort(sortBy);
+    } else {
+      query = query.sort('-createdAt');
+    }
 
-    //3)Execute query
+    //Execute query
     const tours = await query;
 
     res.status(200).json({
