@@ -34,8 +34,14 @@ exports.getAllTours = async (req, res) => {
 
     //4) Pagination
 
+    // passing default value even if the user doesnot specify the page
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 100;
+    const skip = (page - 1) * limit;
+
     // page=2&limit=10 page1= 1-10, page2= 11-20, page3= 21-30
-    query = query.skip(2).limit(10); // limit=> amount of result we want in the query, and skip=> amount of result that should be skipped before querying data
+    // limit =>amounts of data we want in one page
+    query = query.skip(skip).limit(limit); // limit=> amount of result we want in the query, and skip=> amount of result that should be skipped before querying data
 
     //Execute query
     const tours = await query;
