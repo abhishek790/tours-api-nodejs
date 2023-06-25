@@ -1,50 +1,23 @@
 const Tour = require('./../models/tourModel');
+const APIFeatures = require('../utils/apiFeatures');
+
+//aliasing
+exports.aliasTopTours = (req, res, next) => {
+  req.query.limit = '5';
+  req.query.sort = '-ratingsAverage price';
+  req.query.fields = 'name,price,ratingsAverage,summary,difficulty';
+  next();
+};
 
 exports.getAllTours = async (req, res) => {
   try {
-    console.log(req.query);
-    // BUILD QUERY
-    //1A) Filtering
-    const queryObj = { ...req.query };
-    const excludeFields = ['page', 'sort', 'limit', 'fields'];
-    excludeFields.forEach((el) => delete queryObj[el]);
-
-    //2B) Advanced filtering
-
-    let queryStr = JSON.stringify(queryObj);
-    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
-    console.log(JSON.parse(queryStr));
-    let query = Tour.find(JSON.parse(queryStr));
-
-    //2) Sorting
-    if (req.query.sort) {
-      const sortBy = req.query.sort.split(',').join(' ');
-      query = query.sort(sortBy);
-    } else {
-      query = query.sort('-createdAt');
-    }
-
-    //3) Field Limiting
-    if (req.query.fields) {
-      const fields = req.query.fields.split(',').join(' ');
-      query = query.select(fields); // it is same as projection in mongodb
-    } else {
-      query = query.select('-__v'); // - prefix means not including, it will not send __v to client
-    }
-
-    //4) Pagination
-
-    // passing default value even if the user doesnot specify the page
-    const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 100;
-    const skip = (page - 1) * limit;
-
-    // page=2&limit=10 page1= 1-10, page2= 11-20, page3= 21-30
-    // limit =>amounts of data we want in one page
-    query = query.skip(skip).limit(limit); // limit=> amount of result we want in the query, and skip=> amount of result that should be skipped before querying data
-
-    //Execute query
-    const tours = await query;
+    const features = new APIFeatures(Tour.find(), req.query)
+      .filter()
+      .sort()
+      .limitFields()
+      .paginate();
+    //execute query
+    const tours = await features.query;
 
     res.status(200).json({
       status: 'success',
@@ -123,6 +96,104 @@ exports.deleteTours = async (req, res) => {
     });
   } catch (err) {
     res.status(400).json({
+      status: 'fail',
+      message: err,
+    });
+  }
+};
+
+//Aggregation Pipeline is an extermely powerful and useful mongodb framework for data aggregation
+// The idea is that we define a pipeline that all documents from a certain collection go through where they are processed step by step in order to transform them into aggregated results.
+
+//creating function that is gonna calculate a couple of statistics about our tours
+exports.getTourStats = async (req, res) => {
+  try {
+    //aggregation pipeline is a bit like doing regular query,the difference is we can manipulate data in a couple of different steps and to define these steps we pass in an array of so called stages. the documents then pass through these stages step by step in a sequence as we define
+
+    // match => it is used to select or filter certain documents , it's just like a filter object in mongodb
+    // each of the stages is an object
+    const stats = await Tour.aggregate([
+      {
+        $match: { ratingsAverage: { $gte: 4.5 } },
+      },
+      //group=> it allows us to group documents together using accumulator, and accumulator is for example calculating an average
+      {
+        $group: {
+          // the first thing is we always need to specify_id,because this is where we gonna specify what we want to group by For now, we say null here because we want to have everything in one group so that we can calculate the statistics for all of the tours together and not separate it by groups. But we can specify different field name in _id to group by for eg- difficulty, price
+
+          // _id:null,
+          // _id: '$ratingsAverage',
+
+          _id: { $toUpper: '$difficulty' },
+          // calculate total numbers of tour
+          // for each of the documents that's gonna go through this pipeline we are gonna add 1
+          numTours: { $sum: 1 },
+          //calculate total numbers of rating
+          numRatings: { $sum: '$ratingsQuantity' },
+          // avg mathematical operator for calculating avg in mongoDB and we also write name of field ,whose average we want to calculate
+          avgRating: { $avg: '$ratingsAverage' },
+          avgPrice: { $avg: '$price' },
+          minPrice: { $min: '$price' },
+          maxPrice: { $max: '$price' },
+        },
+      },
+      // sort stage
+      {
+        // here we can specify which field we want to sort this by
+        // here in the sorting we actually need to use the field names that we specified up here in the group name
+        // 1 is for ascending
+        $sort: { avgPrice: 1 },
+      },
+      // we can also repeat stages
+      {
+        // _id is now difficulty because we have specified above
+        //$ne, refers to not equal to
+        // selects all the documents that are not easy
+        $match: { _id: { $ne: 'EASY' } },
+      },
+    ]);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        stats,
+      },
+    });
+  } catch (err) {
+    res.status(404).json({
+      status: 'fail',
+      message: err,
+    });
+  }
+};
+
+exports.getMonthlyPlan = async (req, res) => {
+  try {
+    const year = req.param.year * 1;
+    const plan = await Tour.aggregate([
+      {
+        //unwind will basically deconstruct an array field from the input documents and then output one document for each element of the array.
+        //we want to have one tour for each of these dates in the array. and with unwind we can exactly do that
+        $unwind: '$startDates',
+      },
+      {
+        $match: {
+          startDates: {
+            $gte: new Date(`${year}-01-01`),
+            $lte: new Date(`${year}-12-31`),
+          },
+        },
+      },
+    ]);
+    console.log(plan);
+    res.status(200).json({
+      message: 'success',
+      data: {
+        plan,
+      },
+    });
+  } catch (err) {
+    res.status(404).json({
       status: 'fail',
       message: err,
     });
