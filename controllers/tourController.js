@@ -177,12 +177,41 @@ exports.getMonthlyPlan = async (req, res) => {
         $unwind: '$startDates',
       },
       {
+        // error
+        // this part does not run
         $match: {
           startDates: {
             $gte: new Date(`${year}-01-01`),
             $lte: new Date(`${year}-12-31`),
           },
         },
+      },
+      {
+        $group: {
+          //  $month Returns the month of a date as a number between 1 and 12.
+          _id: { $month: '$startDates' },
+          // counting number of tours start in that month
+          numTourStarts: { $sum: 1 },
+          // to specify 2 or more than 2 different tours in one field we need to make array. we do that by using push
+          tours: { $push: '$name' },
+        },
+      },
+      {
+        // used to add fields , here we add month field with value form id
+        $addFields: { month: '$_id' },
+      },
+      {
+        // since we added 0 to _id it will not be shown to client
+        $project: {
+          _id: 0,
+        },
+      },
+      {
+        $sort: { numTourStarts: -1 },
+      },
+      {
+        // it will only allow 12 documnets to be displayed
+        $limit: 12,
       },
     ]);
     console.log(plan);
