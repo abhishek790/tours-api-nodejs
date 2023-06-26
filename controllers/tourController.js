@@ -144,6 +144,8 @@ exports.getTourStats = async (req, res) => {
         // 1 is for ascending
         $sort: { avgPrice: 1 },
       },
+
+      /*
       // we can also repeat stages
       {
         // _id is now difficulty because we have specified above
@@ -151,6 +153,7 @@ exports.getTourStats = async (req, res) => {
         // selects all the documents that are not easy
         $match: { _id: { $ne: 'EASY' } },
       },
+      */
     ]);
 
     res.status(200).json({
@@ -169,7 +172,7 @@ exports.getTourStats = async (req, res) => {
 
 exports.getMonthlyPlan = async (req, res) => {
   try {
-    const year = req.param.year * 1;
+    const year = req.params.year * 1;
     const plan = await Tour.aggregate([
       {
         //unwind will basically deconstruct an array field from the input documents and then output one document for each element of the array.
